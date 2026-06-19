@@ -37,12 +37,25 @@ class DocumentSearchService(
                         false
                     } else {
                         val map = objectMapper.readValue(json, Map::class.java) as Map<*, *>
-                        map.any { (k, v) ->
-                            val key = k.toString()
-                            val value = v?.toString() ?: ""
-                            (key.contains("date", true) || key.contains("year", true))
-                                    && value.contains(year)
+                        
+                        fun containsYear(valueMap: Map<*, *>, searchYear: String): Boolean {
+                            return valueMap.any { (k, v) ->
+                                val key = k.toString()
+                                when (v) {
+                                    is Map<*, *> -> containsYear(v, searchYear)
+                                    is List<*> -> v.any { item ->
+                                        item is Map<*, *> && containsYear(item, searchYear)
+                                    }
+                                    else -> {
+                                        val valueStr = v?.toString() ?: ""
+                                        (key.contains("date", true) || key.contains("year", true))
+                                                && valueStr.contains(searchYear)
+                                    }
+                                }
+                            }
                         }
+                        
+                        containsYear(map, year)
                     }
                 } catch (e: Exception) {
                     false
@@ -59,9 +72,21 @@ class DocumentSearchService(
                         false
                     } else {
                         val map = objectMapper.readValue(json, Map::class.java) as Map<*, *>
-                        map.any { (_, v) ->
-                            v?.toString()?.contains(query, ignoreCase = true) == true
+                        
+                        fun containsQuery(valueMap: Map<*, *>, searchQuery: String): Boolean {
+                            return valueMap.any { (_, v) ->
+                                when (v) {
+                                    is Map<*, *> -> containsQuery(v, searchQuery)
+                                    is List<*> -> v.any { item ->
+                                        (item is Map<*, *> && containsQuery(item, searchQuery)) ||
+                                        item?.toString()?.contains(searchQuery, ignoreCase = true) == true
+                                    }
+                                    else -> v?.toString()?.contains(searchQuery, ignoreCase = true) == true
+                                }
+                            }
                         }
+                        
+                        containsQuery(map, query)
                     }
                 } catch (e: Exception) {
                     false
