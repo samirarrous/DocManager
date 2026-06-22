@@ -110,3 +110,21 @@ Lorsqu'un utilisateur téléverse un document PDF (facture, bilan, etc.) sur la 
    ```bash
    npm run dev
    ```
+---
+
+## 🐳 Lancement avec Docker & Docker Compose (Recommandé)
+
+Pour déployer et lancer l'ensemble des services en une seule commande :
+
+1. Assurez-vous d'avoir installé **Docker** et d'avoir démarré le service Docker.
+2. À la racine du projet, lancez :
+   ```bash
+   docker compose up -d --build
+   ```
+3. Ouvrez votre navigateur sur **`http://localhost`** pour accéder à l'interface client de **DocManager**.
+
+*Les ports exposés sur la machine hôte sont les suivants :*
+* **Port 80 :** Site web (Frontend Vue 3 / Nginx)
+* **Port 8081 :** API Rest (Backend Kotlin)
+* **Port 8000 :** Analyseur PDF (Python FastAPI)
+* **Port 5432 :** Base de données PostgreSQL
