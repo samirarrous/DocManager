@@ -77,9 +77,10 @@ class DocumentController(
         @RequestParam(required = false) year: String?,
         @RequestParam(required = false) type: String?,
         @RequestParam(required = false) query: String?,
+        @RequestParam(required = false) targetUser: String?,
         @RequestAttribute("currentUserEmail") currentUserEmail: String
     ): ResponseEntity<List<Document>> {
-        val docs = documentSearchService.search(year, type, query, currentUserEmail)
+        val docs = documentSearchService.search(year, type, query, currentUserEmail, targetUser)
         return ResponseEntity.ok(docs)
     }
 }

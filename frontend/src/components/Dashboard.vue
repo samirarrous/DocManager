@@ -287,6 +287,7 @@ onMounted(async () => {
         v-else-if="currentTab === 'documents'"
         :current-user="currentUser"
         :API_BASE="API_BASE"
+        :users-list="users"
         @show-toast="showToast"
         @logout="emit('logout')"
       />

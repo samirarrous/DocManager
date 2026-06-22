@@ -2,11 +2,14 @@ package com.example.demo.document
 
 import tools.jackson.databind.ObjectMapper
 import org.springframework.stereotype.Service
+import com.example.demo.user.UserRepository
+import com.example.demo.user.Role
 
 @Service
 class DocumentSearchService(
     private val documentService: DocumentService,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    private val userRepository: UserRepository
 ) {
 
     fun getAvailableTypes(userEmail: String): List<String> {
@@ -17,7 +20,8 @@ class DocumentSearchService(
         year: String?,
         type: String?,
         query: String?,
-        userEmail: String
+        userEmail: String,
+        targetUser: String? = null
     ): List<Document> {
         var documents = documentService.getUserDocuments(userEmail)
 
@@ -90,6 +94,16 @@ class DocumentSearchService(
                     }
                 } catch (e: Exception) {
                     false
+                }
+            }
+        }
+
+        // 3.Filter by username (for admin only)
+        val user = userRepository.findByEmail(userEmail)
+        if (user?.role == Role.ADMIN) {
+            if (!targetUser.isNullOrEmpty()) {
+                documents = documents.filter { doc ->
+                    doc.user.email.equals(targetUser, ignoreCase = true)
                 }
             }
         }
