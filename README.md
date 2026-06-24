@@ -43,10 +43,16 @@ Lorsqu'un utilisateur téléverse un document PDF (facture, bilan, etc.) sur la 
   * Par **Recherche textuelle libre** (recherche de valeurs à l'intérieur du JSON extrait).
   * Par **Utilisateur / Client** (Exclusif aux administrateurs via un champ de recherche intelligent par autocomplétion).
 
+![Aperçu des documents, filtres et résultat de l'extraction](readmeimg/documents%20view%20filter%20and%20extraction%20result.png)
+
 ### 3. Support Client & Intégration Zammad
 * **Formulaire d'Assistance :** Un bouton "Report a Problem" permet d'ouvrir un formulaire Zammad dynamique pour soumettre des tickets directement sur le groupe de support Zammad.
 * **Tchat en direct :** Un tchat client WebSocket Zammad est injecté en bas de l'écran pour initier des conversations instantanées avec des agents de support en direct.
 * **Suivi des Tickets :** L'application communique avec l'API Zammad pour lister l'historique des tickets ouverts pour chaque client et leur statut en temps réel (Open, Closed, New).
+
+![Aperçu de la gestion des tickets](readmeimg/tickets%20view.png)
+
+![Aperçu du tchat en direct](readmeimg/chat%20view.png)
 
 ---
 
