@@ -22,13 +22,13 @@ L'objectif principal de **DocManager** est d'offrir aux entreprises un **systèm
 
 ```mermaid
 graph TD
-    User[Navigateur Web - Vue 3] <-->|Rest API & Auth| Backend[API Spring Boot - Kotlin]
-    Backend <-->|Stockage Métadonnées| DB[(Base PostgreSQL)]
-    Backend --->|1. Téléversement du PDF| S3[(AWS S3 Bucket)]
-    Backend --->|2. Appel d'analyse (Clé S3)| Lambda[AWS Lambda - Python OCR]
-    Lambda <--->|Téléchargement du PDF| S3
-    Backend <-->|Synchro Tickets| Zammad[Serveur Zammad API]
-    User <-->|Tchat en direct - WebSocket| Zammad
+    User["Navigateur Web - Vue 3"] <-->|"Rest API & Auth"| Backend["API Spring Boot - Kotlin"]
+    Backend <-->|"Stockage Métadonnées"| DB[("Base PostgreSQL")]
+    Backend --->|"1. Téléversement du PDF"| S3[("AWS S3 Bucket")]
+    Backend --->|"2. Appel d'analyse (Clé S3)"| Lambda["AWS Lambda - Python OCR"]
+    Lambda <--->|"Téléchargement du PDF"| S3
+    Backend <-->|"Synchro Tickets"| Zammad["Serveur Zammad API"]
+    User <-->|"Tchat en direct - WebSocket"| Zammad
 ```
 
 ### 1. Archivage S3 & Moteur d'Analyse Serverless (`AWS Lambda`)
