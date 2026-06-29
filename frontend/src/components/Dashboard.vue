@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick } from 'vue'
+import { apiRequest } from '../utils/api'
 import Sidebar from './Sidebar.vue'
 import TicketList from './TicketList.vue'
 import UserList from './UserList.vue'
@@ -68,15 +69,7 @@ const submittingUser = ref(false)
 const fetchUsers = async () => {
   loadingUsers.value = true
   try {
-    const res = await fetch(`${API_BASE}/users`, {
-      headers: {
-        'Authorization': `Bearer ${props.currentUser.token}`
-      }
-    })
-    if (res.status === 401) {
-      emit('logout')
-      return
-    }
+    const res = await apiRequest('/users')
     if (!res.ok) throw new Error('Failed to load users')
     users.value = await res.json()
   } catch (err: any) {
@@ -89,19 +82,11 @@ const fetchUsers = async () => {
 const fetchTickets = async () => {
   loadingTickets.value = true
   try {
-    const res = await fetch(`${API_BASE}/tickets?email=${props.currentUser.email}`, {
-      headers: {
-        'Authorization': `Bearer ${props.currentUser.token}`
-      }
-    })
-    if (res.status === 401) {
-      emit('logout')
-      return
-    }
+    const res = await apiRequest(`/tickets?email=${props.currentUser.email}`)
     if (!res.ok) throw new Error('Failed to load tickets')
     tickets.value = await res.json()
   } catch (err: any) {
-    showToast(err.message || 'Error connecting to backend tickets service', 'error')
+    showToast('Impossible de charger les tickets. Le service support (Zammad) est indisponible.', 'error')
   } finally {
     loadingTickets.value = false
   }
@@ -111,18 +96,10 @@ const fetchTickets = async () => {
 const handleCreateUser = async (newUser: any) => {
   submittingUser.value = true
   try {
-    const res = await fetch(`${API_BASE}/users`, {
+    const res = await apiRequest('/users', {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${props.currentUser.token}`
-      },
       body: JSON.stringify(newUser)
     })
-    if (res.status === 401) {
-      emit('logout')
-      return
-    }
     if (!res.ok) {
       const errorText = await res.text()
       throw new Error(errorText || 'Failed to create user')

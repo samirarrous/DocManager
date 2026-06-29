@@ -1,35 +1,46 @@
 package com.example.demo.document
 
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.core.io.ByteArrayResource
-import org.springframework.http.HttpEntity
-import org.springframework.http.HttpHeaders
-import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
-import org.springframework.util.LinkedMultiValueMap
-import org.springframework.web.client.RestTemplate
+import software.amazon.awssdk.services.lambda.LambdaClient
+import software.amazon.awssdk.services.lambda.model.InvokeRequest
+import software.amazon.awssdk.core.SdkBytes
+import tools.jackson.databind.ObjectMapper
 
 @Service
 class PythonAnalyzerClient(
-    @Value("\${python.analyzer.url:http://localhost:8000/upload}") private val url: String
+    @Value("\${aws.bucket-name}") private val bucketName: String,
+    @Value("\${aws.lambda.analyzer-name:docmanager-analyzer}") private val lambdaFunctionName: String,
+    private val objectMapper: ObjectMapper,
+    private val lambdaClient: LambdaClient
 ) {
-    private val restTemplate = RestTemplate()
 
-    fun analyze(fileBytes: ByteArray, originalFilename: String): String {
-        val headers = HttpHeaders()
-        headers.contentType = MediaType.MULTIPART_FORM_DATA
+    fun analyze(s3Key: String): String {
+        val payloadMap = mapOf(
+            "bucket" to bucketName,
+            "key" to s3Key
+        )
+        val payloadJson = objectMapper.writeValueAsString(payloadMap)
 
-        val body = LinkedMultiValueMap<String, Any>()
-        val fileResource = object : ByteArrayResource(fileBytes) {
-            override fun getFilename(): String {
-                return originalFilename
-            }
+        val invokeRequest = InvokeRequest.builder()
+            .functionName(lambdaFunctionName)
+            .payload(SdkBytes.fromUtf8String(payloadJson))
+            .build()
+
+        val response = lambdaClient.invoke(invokeRequest)
+        val responsePayload = response.payload().asUtf8String()
+
+        if (response.functionError() != null) {
+            throw RuntimeException("Lambda analysis failed: $responsePayload")
         }
-        body.add("file", fileResource)
 
-        val request = HttpEntity(body, headers)
+        val responseMap = objectMapper.readValue(responsePayload, Map::class.java)
+        val body = responseMap["body"]
 
-        return restTemplate.postForObject(url, request, String::class.java)
-            ?: throw RuntimeException("Analyzer failed")
+        return if (body is Map<*, *>) {
+            objectMapper.writeValueAsString(body)
+        } else {
+            body?.toString() ?: throw RuntimeException("Empty response body from Lambda")
+        }
     }
 }

@@ -16,47 +16,65 @@ class TicketService(
         val user = userRepository.findByEmail(request.email)
             ?: throw IllegalArgumentException("User not found with email: ${request.email}")
 
-        val zammadResponse = zammadService.createTicket(
-            request.title,
-            request.description,
-            request.email
-        )
+        return try {
+            val zammadResponse = zammadService.createTicket(
+                request.title,
+                request.description,
+                request.email
+            )
 
-        return TicketDto(
-            id = zammadResponse.id,
-            zammadId = zammadResponse.id,
-            number = zammadResponse.number,
-            title = request.title,
-            description = request.description,
-            status = when (zammadResponse.stateId) {
-                1 -> "NEW"
-                2 -> "OPEN"
-                4 -> "CLOSED"
-                7 -> "PENDING CLOSE"
-                else -> "OPEN"
-            },
-            user = UserDto(email = user.email)
-        )
-    }
-
-    fun getTicketsByEmail(email: String): List<TicketDto> {
-        val zammadTickets = zammadService.getTicketsByCustomer(email)
-        return zammadTickets.map { ticket ->
-            val description = zammadService.getFirstArticleBody(ticket.id)
             TicketDto(
-                id = ticket.id,
-                zammadId = ticket.id,
-                number = ticket.number,
-                title = ticket.title,
-                description = description,
-                status = when (ticket.stateId) {
+                id = zammadResponse.id,
+                zammadId = zammadResponse.id,
+                number = zammadResponse.number,
+                title = request.title,
+                description = request.description,
+                status = when (zammadResponse.stateId) {
                     1 -> "NEW"
                     2 -> "OPEN"
                     4 -> "CLOSED"
                     7 -> "PENDING CLOSE"
                     else -> "OPEN"
                 },
-                user = UserDto(email = email)
+                user = UserDto(email = user.email)
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            throw org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                "Zammad is unreachable",
+                e
+            )
+        }
+    }
+
+    fun getTicketsByEmail(email: String): List<TicketDto> {
+        return try {
+            val zammadTickets = zammadService.getTicketsByCustomer(email)
+            zammadTickets.map { ticket ->
+                val description = zammadService.getFirstArticleBody(ticket.id)
+                TicketDto(
+                    id = ticket.id,
+                    zammadId = ticket.id,
+                    number = ticket.number,
+                    title = ticket.title,
+                    description = description,
+                    status = when (ticket.stateId) {
+                        1 -> "NEW"
+                        2 -> "OPEN"
+                        4 -> "CLOSED"
+                        7 -> "PENDING CLOSE"
+                        else -> "OPEN"
+                    },
+                    user = UserDto(email = email)
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            throw org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                "Zammad is unreachable",
+                e
             )
         }
     }

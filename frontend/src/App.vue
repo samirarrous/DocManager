@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import LoginView from './components/LoginView.vue'
 import Dashboard from './components/Dashboard.vue'
-
-const API_BASE = 'http://localhost:8081'
+import { apiRequest } from './utils/api'
 
 interface User {
   id: number
@@ -15,17 +14,15 @@ interface User {
 const currentUser = ref<User | null>(null)
 
 onMounted(async () => {
+  window.addEventListener('unauthorized-logout', handleLogout)
+  
   const sessionStr = localStorage.getItem('docmanager_session')
   if (sessionStr) {
     try {
       const session = JSON.parse(sessionStr) as User
       if (session && session.token) {
         // Validate session with backend
-        const res = await fetch(`${API_BASE}/auth/me`, {
-          headers: {
-            'Authorization': `Bearer ${session.token}`
-          }
-        })
+        const res = await apiRequest('/auth/me')
         if (res.ok) {
           const userDetails = await res.json()
           currentUser.value = {
@@ -43,6 +40,10 @@ onMounted(async () => {
       handleLogout()
     }
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('unauthorized-logout', handleLogout)
 })
 
 const handleAuthSuccess = (session: User) => {

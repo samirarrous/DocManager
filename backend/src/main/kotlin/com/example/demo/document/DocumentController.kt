@@ -1,6 +1,6 @@
 package com.example.demo.document
 
-import org.springframework.core.io.FileSystemResource
+import org.springframework.core.io.InputStreamResource
 import org.springframework.core.io.Resource
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
@@ -22,9 +22,13 @@ class DocumentController(
         @RequestParam("file") file: MultipartFile,
         @RequestAttribute("currentUserEmail") currentUserEmail: String
     ): ResponseEntity<Document> {
+        if (file.contentType != "application/pdf") {
+            throw IllegalArgumentException("Only PDF files are allowed")
+        }
         val doc = documentService.uploadAndProcess(file, currentUserEmail)
         return ResponseEntity.ok(doc)
     }
+
 
     @GetMapping
     fun list(@RequestAttribute("currentUserEmail") currentUserEmail: String): ResponseEntity<List<Document>> {
@@ -38,11 +42,12 @@ class DocumentController(
         @RequestAttribute("currentUserEmail") currentUserEmail: String
     ): ResponseEntity<Resource> {
 
-        val file = documentService.getDocumentFile(id, currentUserEmail)
-        val resource = FileSystemResource(file)
+        val doc = documentService.getDocumentById(id, currentUserEmail)
+        val inputStream = documentService.getDocumentInputStream(id, currentUserEmail)
+        val resource = InputStreamResource(inputStream)
 
         return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"${file.name}\"")
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"${doc.fileName}\"")
             .contentType(MediaType.APPLICATION_PDF)
             .body(resource)
     }

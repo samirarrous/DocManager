@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed, nextTick, onUnmounted } from 'vue'
+import { apiRequest } from '../utils/api'
 
 interface User {
   id: number
@@ -79,15 +80,7 @@ const handleClickOutside = (event: MouseEvent) => {
 
 const fetchTypes = async () => {
   try {
-    const res = await fetch(`${props.API_BASE}/documents/types`, {
-      headers: {
-        'Authorization': `Bearer ${props.currentUser.token}`
-      }
-    })
-    if (res.status === 401) {
-      emit('logout')
-      return
-    }
+    const res = await apiRequest('/documents/types')
     if (res.ok) {
       types.value = await res.json()
     }
@@ -106,19 +99,11 @@ const fetchDocuments = async () => {
     if (searchQuery.value) params.append('query', searchQuery.value)
     if (searchUser.value) params.append('targetUser', searchUser.value)
 
-    const url = params.toString() 
-      ? `${props.API_BASE}/documents/search?${params.toString()}`
-      : `${props.API_BASE}/documents`
+    const endpoint = params.toString() 
+      ? `/documents/search?${params.toString()}`
+      : `/documents`
 
-    const res = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${props.currentUser.token}`
-      }
-    })
-    if (res.status === 401) {
-      emit('logout')
-      return
-    }
+    const res = await apiRequest(endpoint)
     if (!res.ok) throw new Error('Failed to retrieve documents')
     documents.value = await res.json()
   } catch (err: any) {
@@ -148,17 +133,10 @@ const handleFileUpload = async (event: Event) => {
   formData.append('file', file)
 
   try {
-    const res = await fetch(`${props.API_BASE}/documents/upload`, {
+    const res = await apiRequest('/documents/upload', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${props.currentUser.token}`
-      },
       body: formData
     })
-    if (res.status === 401) {
-      emit('logout')
-      return
-    }
     if (!res.ok) {
       const errMsg = await res.text()
       throw new Error(errMsg || 'Failed to upload document')
@@ -177,15 +155,7 @@ const handleFileUpload = async (event: Event) => {
 
 const handleDownload = async (doc: DocumentItem) => {
   try {
-    const res = await fetch(`${props.API_BASE}/documents/${doc.id}/download`, {
-      headers: {
-        'Authorization': `Bearer ${props.currentUser.token}`
-      }
-    })
-    if (res.status === 401) {
-      emit('logout')
-      return
-    }
+    const res = await apiRequest(`/documents/${doc.id}/download`)
     if (!res.ok) throw new Error('Download failed')
     const blob = await res.blob()
     const url = window.URL.createObjectURL(blob)
@@ -209,16 +179,9 @@ const handleDelete = async (doc: DocumentItem) => {
   if (!confirm(`Are you sure you want to delete "${doc.fileName}"?`)) return
 
   try {
-    const res = await fetch(`${props.API_BASE}/documents/${doc.id}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${props.currentUser.token}`
-      }
+    const res = await apiRequest(`/documents/${doc.id}`, {
+      method: 'DELETE'
     })
-    if (res.status === 401) {
-      emit('logout')
-      return
-    }
     if (!res.ok) throw new Error('Failed to delete document')
     emit('show-toast', 'Document deleted successfully', 'success')
     if (selectedDoc.value?.id === doc.id) {

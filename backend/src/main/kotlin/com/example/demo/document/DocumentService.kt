@@ -3,11 +3,15 @@ package com.example.demo.document
 import com.example.demo.user.UserRepository
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
-import java.io.File
-import java.nio.file.Files
-import java.nio.file.Paths
+import java.io.InputStream
 import java.util.UUID
+import org.springframework.beans.factory.annotation.Value
 import tools.jackson.databind.ObjectMapper
+import software.amazon.awssdk.core.sync.RequestBody
+import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.PutObjectRequest
+import software.amazon.awssdk.services.s3.model.GetObjectRequest
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest
 
 import com.example.demo.user.User
 import org.springframework.security.core.Authentication
@@ -17,37 +21,31 @@ class DocumentService(
     private val documentRepository: DocumentRepository,
     private val userRepository: UserRepository,
     private val pythonAnalyzerClient: PythonAnalyzerClient,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    private val s3Client: S3Client,
+    @Value("\${aws.bucket-name}") private val bucketName: String
 ) {
-
-    private val storageDir = run {
-        val currentDir = Paths.get("").toAbsolutePath()
-        val dir = if (currentDir.endsWith("backend")) {
-            currentDir.parent.resolve("samples").resolve("pdf")
-        } else {
-            currentDir.resolve("samples").resolve("pdf")
-        }
-        if (!Files.exists(dir)) {
-            Files.createDirectories(dir)
-        }
-        dir
-    }
 
     fun uploadAndProcess(file: MultipartFile, userEmail: String): Document {
         // Find user
         val user = userRepository.findByEmail(userEmail)
             ?: throw IllegalArgumentException("User not found with email: $userEmail")
 
-        // Save file to samples/pdf
         val originalFilename = file.originalFilename ?: "document.pdf"
         val uniqueFilename = "${UUID.randomUUID()}_$originalFilename"
-        val targetPath = storageDir.resolve(uniqueFilename)
-        Files.write(targetPath, file.bytes)
+
+        // Upload file to AWS S3
+        val putObjectRequest = PutObjectRequest.builder()
+            .bucket(bucketName)
+            .key(uniqueFilename)
+            .contentType(file.contentType)
+            .build()
+        s3Client.putObject(putObjectRequest, RequestBody.fromBytes(file.bytes))
 
         // Call python analyzer (FastAPI) to process document
         var extractedJson: String? = null
         try {
-            extractedJson = pythonAnalyzerClient.analyze(file.bytes, originalFilename)
+            extractedJson = pythonAnalyzerClient.analyze(uniqueFilename)
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -66,10 +64,10 @@ class DocumentService(
             "unknown"
         }
 
-        // Save metadata to DB
+        // Save metadata to DB (storing unique S3 key as filePath)
         val document = Document(
             fileName = originalFilename,
-            filePath = targetPath.toAbsolutePath().toString(),
+            filePath = uniqueFilename,
             type = type,
             user = user,
             extractedJson = extractedJson
@@ -102,6 +100,18 @@ class DocumentService(
             ?: throw SecurityException("Invalid authentication principal")
 
         verifyDocumentAccess(document, currentUser)
+
+        // Delete from S3
+        try {
+            val deleteRequest = DeleteObjectRequest.builder()
+                .bucket(bucketName)
+                .key(document.filePath)
+                .build()
+            s3Client.deleteObject(deleteRequest)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         documentRepository.delete(document)
     }
 
@@ -120,13 +130,13 @@ class DocumentService(
         return doc
     }
 
-    fun getDocumentFile(id: Long, userEmail: String): File {
+    fun getDocumentInputStream(id: Long, userEmail: String): InputStream {
         val doc = getDocumentById(id, userEmail)
-        val file = File(doc.filePath)
-        if (!file.exists()) {
-            throw NoSuchElementException("Physical file not found on disk")
-        }
-        return file
+        val getObjectRequest = GetObjectRequest.builder()
+            .bucket(bucketName)
+            .key(doc.filePath)
+            .build()
+        return s3Client.getObject(getObjectRequest)
     }
 
     fun getDistinctTypesByUser(userEmail: String): List<String> {

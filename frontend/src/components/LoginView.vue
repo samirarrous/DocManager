@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-
-const API_BASE = 'http://localhost:8081'
+import { apiRequest } from '../utils/api'
 
 // Props & Emits
 const emit = defineEmits<{
@@ -40,11 +39,8 @@ const handleSubmit = async () => {
   const endpoint = mode.value === 'login' ? '/auth/login' : '/auth/register'
 
   try {
-    const res = await fetch(`${API_BASE}${endpoint}`, {
+    const res = await apiRequest(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
       body: JSON.stringify({
         email: email.value,
         password: password.value

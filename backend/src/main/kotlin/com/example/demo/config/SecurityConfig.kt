@@ -37,7 +37,7 @@ class SecurityConfig(
             .authorizeHttpRequests { auth ->
                 auth
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                    .requestMatchers("/auth/login", "/auth/register").permitAll()
+                    .requestMatchers("/auth/login", "/auth/register", "/error").permitAll()
                     .requestMatchers("/users/**").hasRole("ADMIN")
                     .anyRequest().authenticated()
             }
