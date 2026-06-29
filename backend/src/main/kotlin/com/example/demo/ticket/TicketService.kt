@@ -5,6 +5,12 @@ import com.example.demo.zammad.ZammadService
 import org.springframework.stereotype.Service
 
 
+/**
+ * Service handling integration with the Zammad ticketing system.
+ * 
+ * It manages support ticket creation and customer ticket history retrieval.
+ * Outages of the external Zammad service are bubbled as 503 SERVICE_UNAVAILABLE.
+ */
 @Service
 class TicketService(
     private val userRepository: UserRepository,
@@ -48,6 +54,13 @@ class TicketService(
         }
     }
 
+    /**
+     * Retrieves the list of support tickets open for a customer by their email.
+     * 
+     * @param email The email address of the customer.
+     * @return The list of tickets mapped to TicketDto.
+     * @throws ResponseStatusException with 503 status if the external Zammad server is unreachable.
+     */
     fun getTicketsByEmail(email: String): List<TicketDto> {
         return try {
             val zammadTickets = zammadService.getTicketsByCustomer(email)

@@ -16,6 +16,12 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest
 import com.example.demo.user.User
 import org.springframework.security.core.Authentication
 
+/**
+ * Service managing archiving, searching, and analyzing of accounting documents.
+ * 
+ * It handles uploading files to AWS S3, triggering OCR analysis via Lambda,
+ * and indexing the extracted metadata into the database.
+ */
 @Service
 class DocumentService(
     private val documentRepository: DocumentRepository,
@@ -26,6 +32,14 @@ class DocumentService(
     @Value("\${aws.bucket-name}") private val bucketName: String
 ) {
 
+    /**
+     * Uploads an accounting PDF to AWS S3, calls the Python Lambda for OCR/analysis,
+     * and persists the resulting metadata in the database.
+     * 
+     * @param file The uploaded MultipartFile.
+     * @param userEmail The email of the user who uploaded the document.
+     * @return The saved Document containing the S3 URI and the extracted JSON metadata.
+     */
     fun uploadAndProcess(file: MultipartFile, userEmail: String): Document {
         // Find user
         val user = userRepository.findByEmail(userEmail)

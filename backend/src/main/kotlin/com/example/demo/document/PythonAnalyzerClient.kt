@@ -7,6 +7,13 @@ import software.amazon.awssdk.services.lambda.model.InvokeRequest
 import software.amazon.awssdk.core.SdkBytes
 import tools.jackson.databind.ObjectMapper
 
+/**
+ * Client service responsible for communicating with the Python document analysis engine.
+ * 
+ * Instead of making a local REST HTTP call, this client directly invokes
+ * an AWS Lambda function (hosted as a Docker ECR container image)
+ * by providing it S3 references of the document to analyze.
+ */
 @Service
 class PythonAnalyzerClient(
     @Value("\${aws.bucket-name}") private val bucketName: String,
@@ -15,6 +22,13 @@ class PythonAnalyzerClient(
     private val lambdaClient: LambdaClient
 ) {
 
+    /**
+     * Synchronously invokes the AWS Lambda function to analyze a document stored on S3.
+     * 
+     * @param s3Key The unique key of the file in the S3 bucket.
+     * @return The raw JSON result containing OCR analysis and key data extraction.
+     * @throws RuntimeException If the Lambda invocation or document processing fails.
+     */
     fun analyze(s3Key: String): String {
         val payloadMap = mapOf(
             "bucket" to bucketName,
