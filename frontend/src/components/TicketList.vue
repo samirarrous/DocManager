@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 
 interface User {
   id: number
@@ -51,6 +51,8 @@ const getInitials = (email: string) => {
   if (name.length <= 2) return name.toUpperCase()
   return name.slice(0, 2).toUpperCase()
 }
+
+const selectedTicket = ref<Ticket | null>(null)
 </script>
 
 <template>
@@ -100,7 +102,12 @@ const getInitials = (email: string) => {
     </div>
 
     <div v-else class="tickets-grid">
-      <div v-for="ticket in filteredTickets" :key="ticket.id" class="glass-card ticket-card">
+      <div 
+        v-for="ticket in filteredTickets" 
+        :key="ticket.id" 
+        class="glass-card ticket-card"
+        @click="selectedTicket = ticket"
+      >
         <div class="ticket-header">
           <span class="ticket-number">#{{ ticket.number || ticket.id }}</span>
           <span class="status-badge" :class="ticket.status?.toLowerCase()">
@@ -124,5 +131,139 @@ const getInitials = (email: string) => {
         </div>
       </div>
     </div>
+
+    <!-- Ticket Detail Modal -->
+    <div class="modal-overlay" v-if="selectedTicket" @click.self="selectedTicket = null">
+      <div class="glass-card modal-card">
+        <button class="close-modal-btn" @click="selectedTicket = null">&times;</button>
+        
+        <div class="modal-header">
+          <span class="ticket-number">#{{ selectedTicket.number || selectedTicket.id }}</span>
+          <span class="status-badge" :class="selectedTicket.status?.toLowerCase()">
+            {{ selectedTicket.status }}
+          </span>
+        </div>
+
+        <h2 class="modal-title">{{ selectedTicket.title }}</h2>
+        
+        <div class="modal-body">
+          <div class="modal-section">
+            <h4>Description</h4>
+            <p class="full-description">{{ selectedTicket.description }}</p>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <div class="user-chip">
+            <div class="avatar" :title="selectedTicket.user?.email">
+              {{ getInitials(selectedTicket.user?.email) }}
+            </div>
+            <span class="user-email">{{ selectedTicket.user?.email }}</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
   </section>
 </template>
+
+<style scoped>
+.ticket-card {
+  cursor: pointer;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 600px;
+  max-height: 80%;
+  display: flex;
+  flex-direction: column;
+  padding: 32px;
+  position: relative;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+}
+
+.close-modal-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.8rem;
+  cursor: pointer;
+  transition: color 0.2s;
+  line-height: 1;
+}
+
+.close-modal-btn:hover {
+  color: var(--text);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.modal-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 20px 0;
+  line-height: 1.3;
+}
+
+.modal-section {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.modal-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.full-description {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+
+</style>
