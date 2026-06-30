@@ -21,12 +21,17 @@ class AuthService(
     }
 
     fun login(request: LogInDTO): AuthResponse {
-
         val user = userService.findByEmail(request.email)
-            ?: throw RuntimeException("Utilisateur introuvable")
+            ?: throw org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.UNAUTHORIZED,
+                "Utilisateur introuvable"
+            )
 
         if (!passwordEncoder.matches(request.password, user.password)) {
-            throw RuntimeException("Mot de passe incorrect")
+            throw org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.UNAUTHORIZED,
+                "Mot de passe incorrect"
+            )
         }
 
         val token = sessionManager.createSession(user.email)

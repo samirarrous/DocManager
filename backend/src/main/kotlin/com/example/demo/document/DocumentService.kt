@@ -49,19 +49,43 @@ class DocumentService(
         val uniqueFilename = "${UUID.randomUUID()}_$originalFilename"
 
         // Upload file to AWS S3
-        val putObjectRequest = PutObjectRequest.builder()
-            .bucket(bucketName)
-            .key(uniqueFilename)
-            .contentType(file.contentType)
-            .build()
-        s3Client.putObject(putObjectRequest, RequestBody.fromBytes(file.bytes))
-
-        // Call python analyzer (FastAPI) to process document
-        var extractedJson: String? = null
         try {
-            extractedJson = pythonAnalyzerClient.analyze(uniqueFilename)
+            val putObjectRequest = PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(uniqueFilename)
+                .contentType(file.contentType)
+                .build()
+            s3Client.putObject(putObjectRequest, RequestBody.fromBytes(file.bytes))
         } catch (e: Exception) {
             e.printStackTrace()
+            throw org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR,
+                "Failed to upload document to S3 storage",
+                e
+            )
+        }
+
+        // Call python analyzer (AWS Lambda) to process document
+        val extractedJson = try {
+            pythonAnalyzerClient.analyze(uniqueFilename)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // Clean up S3 file if analysis fails to avoid orphan files
+            try {
+                s3Client.deleteObject(
+                    DeleteObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(uniqueFilename)
+                        .build()
+                )
+            } catch (cleanupEx: Exception) {
+                cleanupEx.printStackTrace()
+            }
+            throw org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_GATEWAY,
+                "Failed to analyze the document. Please verify the document format.",
+                e
+            )
         }
 
         // Parse type from JSON response by extracting the "document_type" key from "extracted_data"

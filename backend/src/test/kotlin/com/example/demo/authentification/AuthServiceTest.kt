@@ -62,11 +62,12 @@ class AuthServiceTest {
 
         `when`(userService.findByEmail(request.email)).thenReturn(null)
 
-        val exception = assertThrows(RuntimeException::class.java) {
+        val exception = assertThrows(org.springframework.web.server.ResponseStatusException::class.java) {
             authService.login(request)
         }
 
-        assertEquals("Utilisateur introuvable", exception.message)
+        assertEquals(org.springframework.http.HttpStatus.UNAUTHORIZED, exception.statusCode)
+        assertEquals("Utilisateur introuvable", exception.reason)
     }
 
     @Test
@@ -77,11 +78,12 @@ class AuthServiceTest {
         `when`(userService.findByEmail(request.email)).thenReturn(user)
         `when`(passwordEncoder.matches(request.password, user.password)).thenReturn(false)
 
-        val exception = assertThrows(RuntimeException::class.java) {
+        val exception = assertThrows(org.springframework.web.server.ResponseStatusException::class.java) {
             authService.login(request)
         }
 
-        assertEquals("Mot de passe incorrect", exception.message)
+        assertEquals(org.springframework.http.HttpStatus.UNAUTHORIZED, exception.statusCode)
+        assertEquals("Mot de passe incorrect", exception.reason)
     }
 
     // Helper method because Mockito.any() can return null, causing issues in Kotlin non-null params

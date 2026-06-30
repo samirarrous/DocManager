@@ -25,8 +25,14 @@ class AuthController(
     @GetMapping("/me")
     fun me(request: HttpServletRequest): User {
         val email = request.getAttribute("currentUserEmail") as? String
-            ?: throw RuntimeException("Non authentifié")
+            ?: throw org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.UNAUTHORIZED,
+                "Non authentifié"
+            )
         return userRepository.findByEmail(email)
-            ?: throw RuntimeException("Utilisateur introuvable")
+            ?: throw org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.NOT_FOUND,
+                "Utilisateur introuvable"
+            )
     }
 }
