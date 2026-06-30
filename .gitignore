@@ -43,14 +43,13 @@ backend/out/
 !**/src/test/**/bin/
 !**/src/main/**/out/
 !**/src/test/**/out/
-!backend/gradle/wrapper/gradle-wrapper.jar
-
 # Compiled Java/Kotlin files
 *.class
 *.jar
 *.war
 *.nar
 *.ear
+!backend/gradle/wrapper/gradle-wrapper.jar
 
 # ==========================================
 # Frontend (Vue / Vite / Node)
