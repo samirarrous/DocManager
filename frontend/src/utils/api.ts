@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:8081'
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8081'
 
 interface UserSession {
   token: string
@@ -40,4 +40,25 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}): P
   }
 
   return response
+}
+
+/**
+ * Extracts a user-friendly error message from an API response.
+ * If the response is JSON, it pulls the "error" or "message" key.
+ * Otherwise, it falls back to raw text or a default status code message.
+ */
+export async function getErrorMessage(res: Response): Promise<string> {
+  try {
+    // Clone response before reading it because body can only be read once
+    const clonedRes = res.clone()
+    const data = await clonedRes.json()
+    return data.error || data.message || `Error status ${res.status}`
+  } catch (e) {
+    try {
+      const text = await res.text()
+      return text || `Error status ${res.status}`
+    } catch (ex) {
+      return `Error status ${res.status}`
+    }
+  }
 }

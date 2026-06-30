@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed, nextTick, onUnmounted } from 'vue'
-import { apiRequest } from '../utils/api'
+import { apiRequest, getErrorMessage } from '../utils/api'
 
 interface User {
   id: number
@@ -38,6 +38,37 @@ const types = ref<string[]>([])
 const loading = ref(false)
 const uploading = ref(false)
 const selectedDoc = ref<DocumentItem | null>(null)
+const showRawJson = ref(false)
+
+const parsedMetadata = computed(() => {
+  if (!selectedDoc.value || !selectedDoc.value.extractedJson) return null
+  try {
+    return JSON.parse(selectedDoc.value.extractedJson)
+  } catch (e) {
+    return null
+  }
+})
+
+const extractedFields = computed(() => {
+  const meta = parsedMetadata.value
+  if (!meta) return {}
+  return meta.extracted_data || meta
+})
+
+const formatKey = (key: string): string => {
+  return key
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+const formatValue = (val: any): string => {
+  if (val === null || val === undefined) return '-'
+  if (typeof val === 'object') {
+    return JSON.stringify(val)
+  }
+  return val.toString()
+}
 
 // Search & Filter State
 const searchYear = ref('')
@@ -138,8 +169,8 @@ const handleFileUpload = async (event: Event) => {
       body: formData
     })
     if (!res.ok) {
-      const errMsg = await res.text()
-      throw new Error(errMsg || 'Failed to upload document')
+      const errMsg = await getErrorMessage(res)
+      throw new Error(errMsg)
     }
     emit('show-toast', 'Document uploaded and analyzed successfully!', 'success')
     // Reset file input
@@ -345,7 +376,9 @@ onUnmounted(() => {
       </div>
 
       <div v-else-if="documents.length === 0" class="empty-state">
-        <div class="empty-icon-wrapper">📁</div>
+        <div class="empty-icon-wrapper">
+          <i class="fa-solid fa-folder-open"></i>
+        </div>
         <h2>No documents found</h2>
         <p>Upload a new PDF to get started, or clear your filters.</p>
       </div>
@@ -367,10 +400,10 @@ onUnmounted(() => {
             </div>
             <div class="doc-actions" @click.stop>
               <button class="action-icon-btn download" @click="handleDownload(doc)" title="Download original PDF">
-                📥
+                <i class="fa-solid fa-download"></i>
               </button>
               <button class="action-icon-btn delete" @click="handleDelete(doc)" title="Delete metadata & file">
-                🗑️
+                <i class="fa-solid fa-trash-can"></i>
               </button>
             </div>
           </div>
@@ -378,7 +411,7 @@ onUnmounted(() => {
           <div class="doc-info">
             <span class="status-badge doc-type-badge">{{ doc.type.toLowerCase() }}</span>
             <span class="doc-owner" v-if="props.currentUser.role === 'ADMIN'" :title="doc.user?.email">
-              👤 {{ doc.user?.email.split('@')[0] }}
+              <i class="fa-solid fa-user"></i> {{ doc.user?.email.split('@')[0] }}
             </span>
           </div>
         </div>
@@ -389,7 +422,9 @@ onUnmounted(() => {
     <div class="documents-aside">
       <div class="glass-card details-card">
         <div v-if="!selectedDoc" class="aside-empty">
-          <div class="select-preview-icon">👁️‍🗨️</div>
+          <div class="select-preview-icon">
+            <i class="fa-solid fa-eye"></i>
+          </div>
           <h3>Document Preview</h3>
           <p>Select any document in the list to view its parsed financial fields and data.</p>
         </div>
@@ -397,7 +432,9 @@ onUnmounted(() => {
         <div v-else class="aside-content">
           <div class="aside-header">
             <h2>Extraction Result</h2>
-            <span class="status-badge">{{ selectedDoc.type }}</span>
+            <span class="status-badge" :class="selectedDoc.type.toLowerCase()">
+              {{ selectedDoc.type }}
+            </span>
           </div>
           
           <div class="aside-meta">
@@ -413,8 +450,74 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div class="json-viewer">
-            <pre><code>{{ JSON.stringify(parseJson(selectedDoc.extractedJson), null, 2) }}</code></pre>
+          <!-- Structured Key-Value Fields Display -->
+          <div class="structured-data" v-if="extractedFields && Object.keys(extractedFields).length > 0">
+            <!-- Facture Specific Layout -->
+            <div v-if="selectedDoc.type.toLowerCase() === 'facture'" class="fields-section">
+              <div class="field-card main-amount" v-if="extractedFields.total_ttc">
+                <span class="field-label">Total TTC</span>
+                <span class="field-value highlight">{{ extractedFields.total_ttc }}</span>
+              </div>
+              <div class="fields-grid">
+                <div class="field-item" v-if="extractedFields.company_name">
+                  <span class="field-label">Company / Vendor</span>
+                  <span class="field-value" :title="extractedFields.company_name">{{ extractedFields.company_name }}</span>
+                </div>
+                <div class="field-item" v-if="extractedFields.facture_number">
+                  <span class="field-label">Invoice Number</span>
+                  <span class="field-value">{{ extractedFields.facture_number }}</span>
+                </div>
+                <div class="field-item" v-if="extractedFields.limit_date">
+                  <span class="field-label">Due Date</span>
+                  <span class="field-value">{{ extractedFields.limit_date }}</span>
+                </div>
+                <div class="field-item" v-if="extractedFields.total_ht">
+                  <span class="field-label">Total HT</span>
+                  <span class="field-value">{{ extractedFields.total_ht }}</span>
+                </div>
+                <div class="field-item" v-if="extractedFields.tva">
+                  <span class="field-label">TVA (VAT)</span>
+                  <span class="field-value">{{ extractedFields.tva }}</span>
+                </div>
+                <div class="field-item" v-if="extractedFields.SIRET">
+                  <span class="field-label">SIRET</span>
+                  <span class="field-value">{{ extractedFields.SIRET }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Generic Document Layout (Bilan, Compte Resultat, etc.) -->
+            <div v-else class="fields-section">
+              <div class="generic-fields-list">
+                <div 
+                  v-for="(val, key) in extractedFields" 
+                  :key="key" 
+                  class="generic-field-row"
+                  v-show="key !== 'document_type'"
+                >
+                  <span class="generic-key">{{ formatKey(key) }}</span>
+                  <span class="generic-val">{{ formatValue(val) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-else class="no-fields-extracted">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <p>No fields could be extracted.</p>
+          </div>
+
+          <!-- Expandable Raw JSON Viewer -->
+          <div class="raw-json-section">
+            <button class="toggle-raw-btn" @click="showRawJson = !showRawJson">
+              <i class="fa-solid" :class="showRawJson ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+              Show Raw JSON Data
+            </button>
+            <div class="json-viewer-wrapper" v-if="showRawJson">
+              <div class="json-viewer">
+                <pre><code>{{ JSON.stringify(parseJson(selectedDoc.extractedJson), null, 2) }}</code></pre>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -439,7 +542,8 @@ onUnmounted(() => {
 }
 
 .documents-aside {
-  width: 400px;
+  width: 40%;
+  min-width: 380px;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -592,15 +696,30 @@ onUnmounted(() => {
   border: none;
   font-size: 1.1rem;
   cursor: pointer;
-  padding: 4px;
+  padding: 6px;
   border-radius: 4px;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
+  justify-content: center;
 }
 
-.action-icon-btn:hover {
-  background: var(--bg-hover);
+.action-icon-btn.download {
+  color: var(--text-muted, #94a3b8);
+}
+
+.action-icon-btn.download:hover {
+  background: rgba(74, 222, 128, 0.1);
+  color: #4ade80; /* Soft green */
+}
+
+.action-icon-btn.delete {
+  color: var(--text-muted, #94a3b8);
+}
+
+.action-icon-btn.delete:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444; /* Soft red */
 }
 
 .doc-info {
@@ -651,7 +770,8 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: hidden;
+  overflow-y: auto;
+  padding-right: 6px;
 }
 
 .aside-header {
@@ -815,5 +935,144 @@ onUnmounted(() => {
   font-size: 0.85rem;
   color: var(--text-muted);
   text-align: center;
+}
+
+/* Structured Data Styles */
+.structured-data {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.main-amount {
+  background: rgba(74, 222, 128, 0.08);
+  border: 1px solid rgba(74, 222, 128, 0.2);
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.main-amount .field-label {
+  font-size: 0.85rem;
+  color: var(--text-muted, #94a3b8);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.main-amount .field-value.highlight {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #4ade80;
+}
+
+.fields-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.field-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-label {
+  font-size: 0.75rem;
+  color: var(--text-muted, #94a3b8);
+}
+
+.field-value {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text);
+  word-break: break-all;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Generic Fields styles */
+.generic-fields-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.generic-field-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.generic-key {
+  font-size: 0.8rem;
+  color: var(--text-muted, #94a3b8);
+  font-weight: 500;
+}
+
+.generic-val {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  max-width: 60%;
+  text-align: right;
+  word-break: break-all;
+}
+
+.no-fields-extracted {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-muted, #94a3b8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.no-fields-extracted i {
+  font-size: 1.5rem;
+  color: #fbbf24;
+}
+
+/* Toggle raw JSON button */
+.raw-json-section {
+  margin-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 16px;
+}
+
+.toggle-raw-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #94a3b8);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  transition: color 0.2s;
+}
+
+.toggle-raw-btn:hover {
+  color: var(--text);
+}
+
+.json-viewer-wrapper {
+  margin-top: 12px;
 }
 </style>

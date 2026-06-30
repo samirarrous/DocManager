@@ -77,7 +77,9 @@ const getUserTicketCount = (userId: number) => {
     </div>
 
     <div v-else-if="filteredUsers.length === 0" class="empty-state">
-      <div class="empty-icon-wrapper">👥</div>
+      <div class="empty-icon-wrapper">
+        <i class="fa-solid fa-users"></i>
+      </div>
       <h2>No users registered</h2>
       <p>Register a user to link them with tickets.</p>
     </div>

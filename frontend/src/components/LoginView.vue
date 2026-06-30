@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { apiRequest } from '../utils/api'
+import { apiRequest, getErrorMessage } from '../utils/api'
 
 // Props & Emits
 const emit = defineEmits<{
@@ -35,6 +35,13 @@ const handleSubmit = async () => {
     return
   }
 
+  // Frontend Email Validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(email.value)) {
+    showToast('Please enter a valid email address', 'error')
+    return
+  }
+
   loading.value = true
   const endpoint = mode.value === 'login' ? '/auth/login' : '/auth/register'
 
@@ -48,8 +55,8 @@ const handleSubmit = async () => {
     })
 
     if (!res.ok) {
-      const errorMsg = await res.text()
-      throw new Error(errorMsg || `Authentication failed: Status ${res.status}`)
+      const errorMsg = await getErrorMessage(res)
+      throw new Error(errorMsg)
     }
 
     const userData = await res.json()
@@ -150,7 +157,8 @@ const handleSubmit = async () => {
         :class="toast.type"
       >
         <span class="toast-icon">
-          {{ toast.type === 'success' ? '✓' : '⚠' }}
+          <i v-if="toast.type === 'success'" class="fa-solid fa-circle-check"></i>
+          <i v-else class="fa-solid fa-circle-exclamation"></i>
         </span>
         <span class="toast-message">{{ toast.message }}</span>
       </div>

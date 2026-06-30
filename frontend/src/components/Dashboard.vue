@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick } from 'vue'
-import { apiRequest } from '../utils/api'
+import { apiRequest, getErrorMessage } from '../utils/api'
 import Sidebar from './Sidebar.vue'
 import TicketList from './TicketList.vue'
 import UserList from './UserList.vue'
@@ -94,6 +94,18 @@ const fetchTickets = async () => {
 
 // Actions
 const handleCreateUser = async (newUser: any) => {
+  if (!newUser.email || !newUser.password) {
+    showToast('Please fill out all fields', 'error')
+    return
+  }
+
+  // Frontend Email Validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(newUser.email)) {
+    showToast('Please enter a valid email address', 'error')
+    return
+  }
+
   submittingUser.value = true
   try {
     const res = await apiRequest('/users', {
@@ -101,8 +113,8 @@ const handleCreateUser = async (newUser: any) => {
       body: JSON.stringify(newUser)
     })
     if (!res.ok) {
-      const errorText = await res.text()
-      throw new Error(errorText || 'Failed to create user')
+      const errorText = await getErrorMessage(res)
+      throw new Error(errorText)
     }
     showToast('User successfully registered!', 'success')
     showUserModal.value = false
@@ -291,7 +303,9 @@ onMounted(async () => {
         :class="toast.type"
       >
         <span class="toast-icon">
-          {{ toast.type === 'success' ? '✓' : toast.type === 'error' ? '⚠' : 'ℹ' }}
+          <i v-if="toast.type === 'success'" class="fa-solid fa-circle-check"></i>
+          <i v-else-if="toast.type === 'error'" class="fa-solid fa-circle-exclamation"></i>
+          <i v-else class="fa-solid fa-circle-info"></i>
         </span>
         <span class="toast-message">{{ toast.message }}</span>
       </div>

@@ -92,7 +92,9 @@ const getInitials = (email: string) => {
     </div>
 
     <div v-else-if="filteredTickets.length === 0" class="empty-state">
-      <div class="empty-icon-wrapper">📁</div>
+      <div class="empty-icon-wrapper">
+        <i class="fa-solid fa-folder-open"></i>
+      </div>
       <h2>No tickets found</h2>
       <p>Try creating a ticket or modifying your search filters.</p>
     </div>
