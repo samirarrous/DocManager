@@ -13,12 +13,12 @@ class AuthController(
 ) {
 
     @PostMapping("/register")
-    fun register(@RequestBody request: RegisterDTO): User {
+    fun register(@Valid @RequestBody request: RegisterDTO): User {
         return authService.register(request)
     }
 
     @PostMapping("/login")
-    fun login(@RequestBody request: LogInDTO): AuthResponse {
+    fun login(@Valid @RequestBody request: LogInDTO): AuthResponse {
         return authService.login(request)
     }
 
