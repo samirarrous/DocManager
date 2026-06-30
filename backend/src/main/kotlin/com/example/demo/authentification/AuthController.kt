@@ -3,6 +3,7 @@ package com.example.demo.authentification
 import com.example.demo.user.User
 import com.example.demo.user.UserRepository
 import jakarta.servlet.http.HttpServletRequest
+import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*
 
 @RestController

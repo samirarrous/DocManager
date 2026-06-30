@@ -34,7 +34,7 @@ class AuthService(
             )
         }
 
-        val token = sessionManager.createSession(user.email)
+        val token = sessionManager.createSession(user)
         return AuthResponse(token, user)
     }
 }

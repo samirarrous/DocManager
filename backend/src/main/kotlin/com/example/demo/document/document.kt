@@ -4,7 +4,9 @@ import com.example.demo.user.User
 import jakarta.persistence.*
 
 @Entity
-@Table(name = "documents")
+@Table(name = "documents",
+    indexes = [Index(name = "idx_documents_user_id", columnList = "user_id")]
+)
 class Document(
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0,
@@ -15,7 +17,7 @@ class Document(
 
     val type: String,
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     val user: User,
 
     @Column(columnDefinition = "TEXT")

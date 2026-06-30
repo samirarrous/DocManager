@@ -47,7 +47,7 @@ class AuthServiceTest {
 
         `when`(userService.findByEmail(request.email)).thenReturn(user)
         `when`(passwordEncoder.matches(request.password, user.password)).thenReturn(true)
-        `when`(sessionManager.createSession(request.email)).thenReturn(expectedToken)
+        `when`(sessionManager.createSession(user)).thenReturn(expectedToken)
 
         val result = authService.login(request)
 

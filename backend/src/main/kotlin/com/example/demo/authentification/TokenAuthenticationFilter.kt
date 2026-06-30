@@ -25,22 +25,19 @@ class TokenAuthenticationFilter(
         val authHeader = request.getHeader("Authorization")
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             val token = authHeader.substring(7)
-            val email = sessionManager.getEmailByToken(token)
-            if (email != null) {
-                val user = userRepository.findByEmail(email)
-                if (user != null) {
-                    val authorities = listOf(SimpleGrantedAuthority("ROLE_${user.role.name}"))
-                    val authentication = UsernamePasswordAuthenticationToken(
-                        user,
-                        null,
-                        authorities
-                    )
-                    authentication.details = WebAuthenticationDetailsSource().buildDetails(request)
-                    SecurityContextHolder.getContext().authentication = authentication
+            val user = sessionManager.getUserByToken(token)
+            if (user != null) {
+                val authorities = listOf(SimpleGrantedAuthority("ROLE_${user.role.name}"))
+                val authentication = UsernamePasswordAuthenticationToken(
+                    user,
+                    null,
+                    authorities
+                )
+                authentication.details = WebAuthenticationDetailsSource().buildDetails(request)
+                SecurityContextHolder.getContext().authentication = authentication
 
-                    // Retain this attribute for controller compatibility
-                    request.setAttribute("currentUserEmail", email)
-                }
+                // Retain this attribute for controller compatibility
+                request.setAttribute("currentUserEmail", user.email)
             }
         }
         filterChain.doFilter(request, response)
